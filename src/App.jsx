@@ -1,18 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Layout, Tabs, Card, Button, Modal, Form, Input, Select, Tag, message, Switch, List, Dropdown } from 'antd'
-import { PlusOutlined, FireOutlined, FolderOutlined, EllipsisOutlined } from '@ant-design/icons'
+import { Layout, Tabs, Tag, Button, Select, Form, message } from 'antd'
+import { PlusOutlined, FireOutlined, FolderOutlined } from '@ant-design/icons'
 import { db } from './firebase/config'
 import { collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore'
+import { TaskCard, columns } from './components/TaskCard'
+import { TaskModal } from './components/TaskModal'
+import { ProjectModal } from './components/ProjectModal'
 
 const { Header, Content } = Layout
-
-const columns = [
-  { key: 'pending', title: 'Pending', color: '#ffec3d' },
-  { key: 'in_progress', title: 'In Progress', color: '#1890ff' },
-  { key: 'blocked', title: 'Blocked', color: '#ff4d4f' },
-  { key: 'in_review', title: 'In Review', color: '#722ed1' },
-  { key: 'done', title: 'Done', color: '#52c41a' },
-]
 
 function App() {
   const [tasks, setTasks] = useState([])
@@ -37,9 +31,9 @@ function App() {
           status: data.status || 'pending',
           assignee: data.assignee || '',
           project: data.project || null,
-          type: data.type || 'feature', // feature, enhance, fix
-          priority: data.priority ?? 2, // 0-5, default 2
-          prLink: data.prLink || null, // PR URL for in_review/done tasks
+          type: data.type || 'feature',
+          priority: data.priority ?? 2,
+          prLink: data.prLink || null,
           createdAt: data.createdAt || '',
           updatedAt: data.updatedAt || '',
         }
@@ -59,7 +53,7 @@ function App() {
         return {
           id: doc.id,
           name: data.name || '',
-          active: data.active !== false, // default true
+          active: data.active !== false,
         }
       })
       setProjects(projectList.filter(p => p.active))
@@ -168,7 +162,6 @@ function App() {
       </Header>
       
       <Content style={{ padding: 24 }}>
-        {/* Project Filter */}
         {projects.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <Select
@@ -195,55 +188,14 @@ function App() {
             children: (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                 {getTasksByStatus(col.key).map(task => (
-                  <Card 
+                  <TaskCard 
                     key={task.id} 
-                    title={task.title}
-                    extra={
-                      <Dropdown
-                        menu={{
-                          items: columns.map(c => ({ 
-                            key: c.key, 
-                            label: c.title,
-                            onClick: () => handleStatusChange(task.id, c.key)
-                          }))
-                        }}
-                        trigger={['click']}
-                      >
-                        <Button type="text" icon={<EllipsisOutlined style={{ fontSize: 20 }} />} />
-                      </Dropdown>
-                    }
-                    actions={[
-                      (task.status === 'in_review' || task.status === 'done') && (
-                        <Button type="text" onClick={() => {
-                          const link = prompt('Enter PR URL:', task.prLink || 'https://github.com/')
-                          if (link) handleUpdatePRLink(task.id, link)
-                        }}>
-                          🔗 PR Link
-                        </Button>
-                      ),
-                      <Button type="text" danger onClick={() => handleDelete(task.id)}>Delete</Button>
-                    ]}
-                  >
-                    <p>{task.description}</p>
-                    {task.prLink && (
-                      <a href={task.prLink} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                        🔗 View PR
-                      </a>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Tag color={task.type === 'fix' ? 'red' : task.type === 'enhance' ? 'orange' : 'blue'}>
-                        {task.type === 'fix' ? '🔧' : task.type === 'enhance' ? '🚀' : '✨'} {task.type}
-                      </Tag>
-                      <Tag color={task.priority >= 4 ? 'red' : task.priority >= 3 ? 'orange' : 'default'}>
-                        ⭐ Priority: {task.priority}
-                      </Tag>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <Tag color="blue">👤 {task.assignee || 'Unassigned'}</Tag>
-                      {task.project && <Tag color="green">📁 {projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
-                    </div>
-                  </Card>
+                    task={task} 
+                    projects={projects}
+                    onStatusChange={handleStatusChange}
+                    onDelete={handleDelete}
+                    onUpdatePRLink={handleUpdatePRLink}
+                  />
                 ))}
               </div>
             )
@@ -251,93 +203,22 @@ function App() {
         />
       </Content>
 
-      {/* Add Task Modal */}
-      <Modal
-        title="Add New Task"
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        footer={null}
-      >
-        <Form form={form} layout="vertical" onFinish={handleAddTask}>
-          <Form.Item name="title" label="Title" rules={[{ required: true }]}>
-            <Input placeholder="Task title" />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <Input.TextArea placeholder="Task description" rows={3} />
-          </Form.Item>
-          <Form.Item name="assignee" label="Assignee" rules={[{ required: true }]}>
-            <Select placeholder="Select assignee">
-              <Select.Option value="Tony">Tony</Select.Option>
-              <Select.Option value="Tron">Tron</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="type" label="Type" initialValue="feature">
-            <Select placeholder="Select type">
-              <Select.Option value="feature">✨ Feature</Select.Option>
-              <Select.Option value="enhance">🚀 Enhance</Select.Option>
-              <Select.Option value="fix">🔧 Fix</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="priority" label="Priority" initialValue={2}>
-            <Select placeholder="Select priority">
-              <Select.Option value={0}>0 - Lowest</Select.Option>
-              <Select.Option value={1}>1 - Low</Select.Option>
-              <Select.Option value={2}>2 - Medium</Select.Option>
-              <Select.Option value={3}>3 - High</Select.Option>
-              <Select.Option value={4}>4 - Urgent</Select.Option>
-              <Select.Option value={5}>5 - Critical</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item name="project" label="Project" rules={[{ required: true, message: 'Please select a project' }]}>
-            <Select placeholder="Select project">
-              {projects.map(p => (
-                <Select.Option key={p.id} value={p.id}>{p.name}</Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Button type="primary" htmlType="submit" block>
-            Add Task
-          </Button>
-        </Form>
-      </Modal>
+      <TaskModal 
+        open={modalOpen} 
+        onCancel={() => setModalOpen(false)} 
+        onSubmit={handleAddTask}
+        projects={projects}
+        form={form}
+      />
 
-      {/* Projects Modal */}
-      <Modal
-        title="Manage Projects"
+      <ProjectModal 
         open={projectModalOpen}
         onCancel={() => setProjectModalOpen(false)}
-        footer={null}
-        width={500}
-      >
-        <Form form={projectForm} layout="inline" onFinish={handleAddProject} style={{ marginBottom: 16 }}>
-          <Form.Item name="name" label="Project Name" rules={[{ required: true }]} style={{ flex: 1 }}>
-            <Input placeholder="New project name" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">Add</Button>
-          </Form.Item>
-        </Form>
-        <List
-          size="small"
-          dataSource={projects}
-          renderItem={item => (
-            <List.Item
-              actions={[
-                <Switch 
-                  key="active"
-                  checked={item.active} 
-                  onChange={() => handleToggleProjectActive(item.id, item.active)}
-                  checkedChildren="Active"
-                  unCheckedChildren="Inactive"
-                />,
-                <Button key="delete" type="text" danger size="small">Delete</Button>
-              ]}
-            >
-              {item.name}
-            </List.Item>
-          )}
-        />
-      </Modal>
+        onAddProject={handleAddProject}
+        onToggleActive={handleToggleProjectActive}
+        projects={projects}
+        form={projectForm}
+      />
     </Layout>
   )
 }
