@@ -203,10 +203,10 @@ function App() {
                         {task.type === 'fix' ? '🔧' : task.type === 'enhance' ? '🚀' : '✨'} {task.type}
                       </Tag>
                       <Tag color={task.priority >= 4 ? 'red' : task.priority >= 3 ? 'orange' : 'default'}>
-                        ⭐ {task.priority}
+                        ⭐ Priority: {task.priority}
                       </Tag>
-                      <Tag color="blue">{task.assignee || 'Unassigned'}</Tag>
-                      {task.project && <Tag color="green">{projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
+                      <Tag color="blue">👤 {task.assignee || 'Unassigned'}</Tag>
+                      {task.project && <Tag color="green">📁 {projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
                     </div>
                   </Card>
                 ))}
