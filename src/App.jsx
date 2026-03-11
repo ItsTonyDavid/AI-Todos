@@ -139,7 +139,7 @@ function App() {
     <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
       <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FireOutlined style={{ font Size: 24, color: '#00a8ff' }} />
+          <FireOutlined style={{ fontSize: 24, color: '#00a8ff' }} />
           <span style={{ fontSize: 20, fontWeight: 'bold' }}>AI Todos</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
