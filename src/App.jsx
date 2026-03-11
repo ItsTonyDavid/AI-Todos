@@ -37,6 +37,7 @@ function App() {
           status: data.status || 'pending',
           assignee: data.assignee || '',
           project: data.project || null,
+          type: data.type || 'feature', // feature, enhance, fix
           createdAt: data.createdAt || '',
           updatedAt: data.updatedAt || '',
         }
@@ -197,6 +198,9 @@ function App() {
                   >
                     <p>{task.description}</p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Tag color={task.type === 'fix' ? 'red' : task.type === 'enhance' ? 'orange' : 'blue'}>
+                        {task.type === 'fix' ? '🔧' : task.type === 'enhance' ? '🚀' : '✨'} {task.type}
+                      </Tag>
                       <Tag color="blue">{task.assignee || 'Unassigned'}</Tag>
                       {task.project && <Tag color="green">{projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
                     </div>
@@ -226,6 +230,13 @@ function App() {
             <Select placeholder="Select assignee">
               <Select.Option value="Tony">Tony</Select.Option>
               <Select.Option value="Tron">Tron</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="type" label="Type" initialValue="feature">
+            <Select placeholder="Select type">
+              <Select.Option value="feature">✨ Feature</Select.Option>
+              <Select.Option value="enhance">🚀 Enhance</Select.Option>
+              <Select.Option value="fix">🔧 Fix</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="project" label="Project">
