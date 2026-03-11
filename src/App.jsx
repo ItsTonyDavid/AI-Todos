@@ -39,6 +39,7 @@ function App() {
           project: data.project || null,
           type: data.type || 'feature', // feature, enhance, fix
           priority: data.priority ?? 2, // 0-5, default 2
+          prLink: data.prLink || null, // PR URL for in_review/done tasks
           createdAt: data.createdAt || '',
           updatedAt: data.updatedAt || '',
         }
@@ -115,6 +116,18 @@ function App() {
       message.success('Task deleted!')
     } catch (error) {
       message.error('Failed to delete task')
+    }
+  }
+
+  const handleUpdatePRLink = async (taskId, prLink) => {
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), {
+        prLink: prLink,
+        updatedAt: new Date().toISOString(),
+      })
+      message.success('PR link updated!')
+    } catch (error) {
+      message.error('Failed to update PR link')
     }
   }
 
@@ -200,10 +213,23 @@ function App() {
                       </Dropdown>
                     }
                     actions={[
+                      (task.status === 'in_review' || task.status === 'done') && (
+                        <Button type="text" onClick={() => {
+                          const link = prompt('Enter PR URL:', task.prLink || 'https://github.com/')
+                          if (link) handleUpdatePRLink(task.id, link)
+                        }}>
+                          🔗 PR Link
+                        </Button>
+                      ),
                       <Button type="text" danger onClick={() => handleDelete(task.id)}>Delete</Button>
                     ]}
                   >
                     <p>{task.description}</p>
+                    {task.prLink && (
+                      <a href={task.prLink} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                        🔗 View PR
+                      </a>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Tag color={task.type === 'fix' ? 'red' : task.type === 'enhance' ? 'orange' : 'blue'}>
