@@ -13,9 +13,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with custom database ID from env
+// Initialize Firestore with custom database ID (fallback to tron-todos-db)
 export const db = initializeFirestore(app, {
-  databaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID
+  databaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || "tron-todos-db"
 });
 
 export const auth = getAuth(app);
