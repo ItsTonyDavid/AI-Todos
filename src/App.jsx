@@ -253,8 +253,8 @@ function App() {
               <Select.Option value={5}>5 - Critical</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="project" label="Project">
-            <Select placeholder="Select project" allowClear>
+          <Form.Item name="project" label="Project" rules={[{ required: true, message: 'Please select a project' }]}>
+            <Select placeholder="Select project">
               {projects.map(p => (
                 <Select.Option key={p.id} value={p.id}>{p.name}</Select.Option>
               ))}
