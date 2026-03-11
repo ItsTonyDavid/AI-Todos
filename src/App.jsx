@@ -38,6 +38,7 @@ function App() {
           assignee: data.assignee || '',
           project: data.project || null,
           type: data.type || 'feature', // feature, enhance, fix
+          priority: data.priority ?? 2, // 0-5, default 2
           createdAt: data.createdAt || '',
           updatedAt: data.updatedAt || '',
         }
@@ -201,6 +202,9 @@ function App() {
                       <Tag color={task.type === 'fix' ? 'red' : task.type === 'enhance' ? 'orange' : 'blue'}>
                         {task.type === 'fix' ? '🔧' : task.type === 'enhance' ? '🚀' : '✨'} {task.type}
                       </Tag>
+                      <Tag color={task.priority >= 4 ? 'red' : task.priority >= 3 ? 'orange' : 'default'}>
+                        ⭐ {task.priority}
+                      </Tag>
                       <Tag color="blue">{task.assignee || 'Unassigned'}</Tag>
                       {task.project && <Tag color="green">{projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
                     </div>
@@ -237,6 +241,16 @@ function App() {
               <Select.Option value="feature">✨ Feature</Select.Option>
               <Select.Option value="enhance">🚀 Enhance</Select.Option>
               <Select.Option value="fix">🔧 Fix</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="priority" label="Priority" initialValue={2}>
+            <Select placeholder="Select priority">
+              <Select.Option value={0}>0 - Lowest</Select.Option>
+              <Select.Option value={1}>1 - Low</Select.Option>
+              <Select.Option value={2}>2 - Medium</Select.Option>
+              <Select.Option value={3}>3 - High</Select.Option>
+              <Select.Option value={4}>4 - Urgent</Select.Option>
+              <Select.Option value={5}>5 - Critical</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="project" label="Project">
