@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Layout, Tabs, Card, Button, Modal, Form, Input, Select, Tag, message } from 'antd'
-import { PlusOutlined, FireOutlined } from '@ant-design/icons'
+import { Layout, Tabs, Card, Button, Modal, Form, Input, Select, Tag, message, Switch, List } from 'antd'
+import { PlusOutlined, FireOutlined, FolderOutlined } from '@ant-design/icons'
 import { db } from './firebase/config'
 import { collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore'
 
@@ -16,19 +16,50 @@ const columns = [
 
 function App() {
   const [tasks, setTasks] = useState([])
+  const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState(null)
   const [form] = Form.useForm()
+  const [projectForm] = Form.useForm()
 
+  // Fetch tasks
   useEffect(() => {
     const q = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'))
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const taskList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
+      const taskList = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          title: data.title || '',
+          description: data.description || '',
+          status: data.status || 'pending',
+          assignee: data.assignee || '',
+          project: data.project || null,
+          createdAt: data.createdAt || '',
+          updatedAt: data.updatedAt || '',
+        }
+      })
       setTasks(taskList)
       setLoading(false)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  // Fetch projects
+  useEffect(() => {
+    const q = query(collection(db, 'projects'), orderBy('name', 'asc'))
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const projectList = snapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          name: data.name || '',
+          active: data.active !== false, // default true
+        }
+      })
+      setProjects(projectList.filter(p => p.active))
     })
     return () => unsubscribe()
   }, [])
@@ -46,6 +77,21 @@ function App() {
       form.resetFields()
     } catch (error) {
       message.error('Failed to add task')
+    }
+  }
+
+  const handleAddProject = async (values) => {
+    try {
+      await addDoc(collection(db, 'projects'), {
+        ...values,
+        active: true,
+        createdAt: new Date().toISOString(),
+      })
+      message.success('Project added!')
+      setProjectModalOpen(false)
+      projectForm.resetFields()
+    } catch (error) {
+      message.error('Failed to add project')
     }
   }
 
@@ -70,21 +116,57 @@ function App() {
     }
   }
 
-  const getTasksByStatus = (status) => tasks.filter(t => t.status === status)
+  const handleToggleProjectActive = async (projectId, currentActive) => {
+    try {
+      await updateDoc(doc(db, 'projects', projectId), {
+        active: !currentActive,
+      })
+      message.success(`Project ${currentActive ? 'deactivated' : 'activated'}!`)
+    } catch (error) {
+      message.error('Failed to update project')
+    }
+  }
+
+  const getTasksByStatus = (status) => {
+    let filtered = tasks.filter(t => t.status === status)
+    if (selectedProject) {
+      filtered = filtered.filter(t => t.project === selectedProject)
+    }
+    return filtered
+  }
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
       <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FireOutlined style={{ fontSize: 24, color: '#00a8ff' }} />
+          <FireOutlined style={{ font Size: 24, color: '#00a8ff' }} />
           <span style={{ fontSize: 20, fontWeight: 'bold' }}>AI Todos</span>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
-          New Task
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button icon={<FolderOutlined />} onClick={() => setProjectModalOpen(true)}>
+            Projects
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+            New Task
+          </Button>
+        </div>
       </Header>
       
       <Content style={{ padding: 24 }}>
+        {/* Project Filter */}
+        {projects.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <Select
+              style={{ width: 200 }}
+              placeholder="Filter by project"
+              allowClear
+              value={selectedProject}
+              onChange={setSelectedProject}
+              options={projects.map(p => ({ value: p.id, label: p.name }))}
+            />
+          </div>
+        )}
+
         <Tabs 
           type="card" 
           items={columns.map(col => ({
@@ -114,7 +196,10 @@ function App() {
                     ]}
                   >
                     <p>{task.description}</p>
-                    <Tag>{task.assignee || 'Unassigned'}</Tag>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Tag color="blue">{task.assignee || 'Unassigned'}</Tag>
+                      {task.project && <Tag color="green">{projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -123,6 +208,7 @@ function App() {
         />
       </Content>
 
+      {/* Add Task Modal */}
       <Modal
         title="Add New Task"
         open={modalOpen}
@@ -142,10 +228,55 @@ function App() {
               <Select.Option value="Tron">Tron</Select.Option>
             </Select>
           </Form.Item>
+          <Form.Item name="project" label="Project">
+            <Select placeholder="Select project" allowClear>
+              {projects.map(p => (
+                <Select.Option key={p.id} value={p.id}>{p.name}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
           <Button type="primary" htmlType="submit" block>
             Add Task
           </Button>
         </Form>
+      </Modal>
+
+      {/* Projects Modal */}
+      <Modal
+        title="Manage Projects"
+        open={projectModalOpen}
+        onCancel={() => setProjectModalOpen(false)}
+        footer={null}
+        width={500}
+      >
+        <Form form={projectForm} layout="inline" onFinish={handleAddProject} style={{ marginBottom: 16 }}>
+          <Form.Item name="name" label="Project Name" rules={[{ required: true }]} style={{ flex: 1 }}>
+            <Input placeholder="New project name" />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">Add</Button>
+          </Form.Item>
+        </Form>
+        <List
+          size="small"
+          dataSource={projects}
+          renderItem={item => (
+            <List.Item
+              actions={[
+                <Switch 
+                  key="active"
+                  checked={item.active} 
+                  onChange={() => handleToggleProjectActive(item.id, item.active)}
+                  checkedChildren="Active"
+                  unCheckedChildren="Inactive"
+                />,
+                <Button key="delete" type="text" danger size="small">Delete</Button>
+              ]}
+            >
+              {item.name}
+            </List.Item>
+          )}
+        />
       </Modal>
     </Layout>
   )
