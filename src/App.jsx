@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Layout, Tabs, Card, Button, Modal, Form, Input, Select, Tag, message, Switch, List } from 'antd'
-import { PlusOutlined, FireOutlined, FolderOutlined } from '@ant-design/icons'
+import { Layout, Tabs, Card, Button, Modal, Form, Input, Select, Tag, message, Switch, List, Dropdown } from 'antd'
+import { PlusOutlined, FireOutlined, FolderOutlined, EllipsisOutlined } from '@ant-design/icons'
 import { db } from './firebase/config'
 import { collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore'
 
@@ -186,25 +186,34 @@ function App() {
                     key={task.id} 
                     title={task.title}
                     extra={
-                      <Select
-                        value={task.status}
-                        onChange={(val) => handleStatusChange(task.id, val)}
-                        style={{ width: 140 }}
-                        options={columns.map(c => ({ value: c.key, label: c.title }))}
-                      />
+                      <Dropdown
+                        menu={{
+                          items: columns.map(c => ({ 
+                            key: c.key, 
+                            label: c.title,
+                            onClick: () => handleStatusChange(task.id, c.key)
+                          }))
+                        }}
+                        trigger={['click']}
+                      >
+                        <Button type="text" icon={<EllipsisOutlined style={{ fontSize: 20 }} />} />
+                      </Dropdown>
                     }
                     actions={[
                       <Button type="text" danger onClick={() => handleDelete(task.id)}>Delete</Button>
                     ]}
                   >
                     <p>{task.description}</p>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Tag color={task.type === 'fix' ? 'red' : task.type === 'enhance' ? 'orange' : 'blue'}>
                         {task.type === 'fix' ? '🔧' : task.type === 'enhance' ? '🚀' : '✨'} {task.type}
                       </Tag>
                       <Tag color={task.priority >= 4 ? 'red' : task.priority >= 3 ? 'orange' : 'default'}>
                         ⭐ Priority: {task.priority}
                       </Tag>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Tag color="blue">👤 {task.assignee || 'Unassigned'}</Tag>
                       {task.project && <Tag color="green">📁 {projects.find(p => p.id === task.project)?.name || 'Unknown'}</Tag>}
                     </div>
